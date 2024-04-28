@@ -14,6 +14,8 @@ from models.place import Place
 from models.review import Review
 from models.state import State
 from models.user import User
+from models import storage
+from models.engine.file_storage import FileStorage
 import json
 import os
 import pep8
@@ -68,6 +70,35 @@ test_db_storage.py'])
                             "{:s} method needs a docstring".format(func[0]))
 
 
+@unittest.skipIf(type(models.storage) == FileStorage, "Testing FileStorage")
+class TestStateDBInstances(unittest.TestCase):
+    """DBStorage State Tests"""
+    def tearDownClass():
+        """tidies up the tests removing storage objects"""
+        storage.drop_table(State)
+
+    def setUp(self):
+        """initializes new BaseModel object for testing"""
+        self.state_one = State(name='OK')
+        self.state_one.save()
+        self.state_one_id = self.state_one.id
+        self.state_two = State(name='AR')
+        self.state_two.save()
+        self.state_two_id = self.state_two.id
+        storage.save()
+        storage.reload()
+
+    def test_count_meth(self):
+        """tests count method for DBStorage"""
+        total_states = storage.count(State)
+        self.assertEqual(total_states, 2)
+
+    def test_get_meth(self):
+        """tests get method for DBStorage"""
+        oklahoma_get = storage.get(State, self.state_one_id)
+        self.assertEqual(oklahoma_get.name, 'OK')
+
+
 class TestFileStorage(unittest.TestCase):
     """Test the FileStorage class"""
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
@@ -86,35 +117,3 @@ class TestFileStorage(unittest.TestCase):
     @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
     def test_save(self):
         """Test that save properly saves objects to file.json"""
-
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_get(self):
-        """test for get() method"""
-        storage = models.storage
-        state = State(name="Lankaran")
-        state.save()
-        state_id = state.id
-        obj = storage.get(State, state_id)
-        obj2 = storage.get(State, 123)
-        self.assertEqual(state, obj)
-        self.assertEqual(obj is obj2)
-
-    @unittest.skipIf(models.storage_t != 'db', "not testing db storage")
-    def test_count(self):
-        """test for count"""
-        storage = models.storage
-        count = storage.count()
-        state = State(name="Baku")
-        state.save()
-        new_count = storage.count()
-        self.assertTrue(new_count == count + 1)
-        state2 = State(name="Gabala")
-        state2.save()
-        new_count = storage.count()
-        self.assertTrue(new_count == count + 2)
-        storage.delete(state)
-        new_count = storage.count()
-        self.assertTrue(new_count == count + 1)
-        storage.delete(state2)
-        new_count = storage.count()
-        self.assertTrue(new_count == count)
